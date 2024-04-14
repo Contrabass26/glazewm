@@ -149,6 +149,7 @@ namespace GlazeWM.Domain.UserConfigs.CommandHandlers
           // Check that all keybindings in the config can be cast to `Keys` enum.
           foreach (var keybinding in keybindingConfig.BindingList)
           {
+            if (keybinding.StartsWith("midi ")) continue;
             try
             {
               var _ = KeybindingHelper.ParseKeybindingString(keybinding);

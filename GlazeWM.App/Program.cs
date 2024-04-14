@@ -21,6 +21,7 @@ using GlazeWM.Infrastructure.Exceptions;
 using GlazeWM.Infrastructure.Logging;
 using GlazeWM.Infrastructure.Serialization;
 using GlazeWM.Infrastructure.Utils;
+using GlazeWM.Infrastructure.WindowsApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
@@ -68,6 +69,8 @@ namespace GlazeWM.App
         SubscribeMessage => await StartCli(args, isSingleInstance, true),
         _ => ExitWithError(parsedArgs.Errors.First())
       };
+
+      KeybindingService.midiListening = false;
 
       return (int)exitCode;
     }

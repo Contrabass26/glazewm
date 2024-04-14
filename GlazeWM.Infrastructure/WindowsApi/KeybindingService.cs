@@ -4,7 +4,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using System.Threading;
 using GlazeWM.Infrastructure.Utils;
+using NAudio.Midi;
 using static GlazeWM.Infrastructure.WindowsApi.WindowsApiService;
 
 namespace GlazeWM.Infrastructure.WindowsApi
@@ -44,6 +46,8 @@ namespace GlazeWM.Infrastructure.WindowsApi
     /// Store a reference to the hook delegate to prevent its garbage collection.
     /// </summary>
     private readonly HookProc _hookProc;
+    public static volatile bool midiListening = true;
+    private readonly Dictionary<int, Action> midiKeybindings = new();
 
     public KeybindingService()
     {
@@ -59,10 +63,49 @@ namespace GlazeWM.Infrastructure.WindowsApi
         Process.GetCurrentProcess().MainModule.BaseAddress,
         0
       );
+
+      // Setup MIDI listening
+      var midiThread = new Thread(() =>
+      {
+        Console.WriteLine("Setting up MIDI listening for " + MidiIn.DeviceInfo(0).ProductName);
+        var inputDevice = new MidiIn(0);
+        inputDevice.MessageReceived += (sender, e) =>
+        {
+          var message = e.MidiEvent;
+          if (message.CommandCode == MidiCommandCode.NoteOn)
+          {
+            var noteOnEvent = (NoteOnEvent)message;
+            var buttonNum = noteOnEvent.NoteNumber - 7; // Remap buttons from 8-23 to 1-16
+            if (midiKeybindings.ContainsKey(buttonNum))
+            {
+              midiKeybindings[buttonNum].Invoke();
+            }
+          }
+        };
+        inputDevice.Start();
+
+        while (midiListening)
+        {
+          Thread.Sleep(100);
+        }
+
+        Console.WriteLine("Closing MIDI listener");
+        inputDevice.Stop();
+        inputDevice.Dispose();
+      });
+      midiThread.Start();
     }
 
     public void AddGlobalKeybinding(string keybindingString, Action callback)
     {
+      if (keybindingString.StartsWith("midi "))
+      {
+        var buttonNum = int.Parse(keybindingString[5..]); // Buttons from 1 to 16
+        midiKeybindings.Add(buttonNum, callback);
+        Console.WriteLine($"Registered MIDI keybind: \"{keybindingString}\"");
+        return;
+      }
+
       var keybindingKeys = KeybindingHelper.ParseKeybindingString(keybindingString);
 
       var triggerKey = keybindingKeys.Last();
