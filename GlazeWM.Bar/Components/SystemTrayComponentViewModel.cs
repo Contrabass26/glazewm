@@ -18,7 +18,7 @@ namespace GlazeWM.Bar.Components
     private readonly ShellManager _shellManager =
       ServiceLocator.GetRequiredService<ShellManager>();
 
-    private bool _isExpanded = true;
+    private bool _isExpanded = false;
     public bool IsExpanded
     {
       get => _isExpanded;
