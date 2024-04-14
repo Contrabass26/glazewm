@@ -123,6 +123,7 @@ namespace GlazeWM.Infrastructure.WindowsApi
     public void Reset()
     {
       _keybindingsByTriggerKey.Clear();
+      midiKeybindings.Clear();
     }
 
     private IntPtr KeybindingHookProc(int nCode, IntPtr wParam, IntPtr lParam)
