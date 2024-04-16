@@ -8,6 +8,7 @@ using System.Threading;
 using GlazeWM.Infrastructure.Utils;
 using NAudio.Midi;
 using static GlazeWM.Infrastructure.WindowsApi.WindowsApiService;
+using static GlazeWM.Infrastructure.WindowsApi.PhysicalMonitorBrightnessController;
 
 namespace GlazeWM.Infrastructure.WindowsApi
 {
@@ -48,6 +49,8 @@ namespace GlazeWM.Infrastructure.WindowsApi
     private readonly HookProc _hookProc;
     public static volatile bool midiListening = true;
     private readonly Dictionary<int, Action> midiKeybindings = new();
+    private readonly PhysicalMonitorBrightnessController brightnessController = new();
+    private int lastBrightness = 120;
 
     public KeybindingService()
     {
@@ -80,6 +83,25 @@ namespace GlazeWM.Infrastructure.WindowsApi
             {
               midiKeybindings[buttonNum].Invoke();
             }
+          }
+          else if (message.CommandCode == MidiCommandCode.ControlChange)
+          {
+            var controlChangeEvent = (ControlChangeEvent)message;
+            if ((int)controlChangeEvent.Controller == 9)
+            {
+              var value = controlChangeEvent.ControllerValue;
+              var brightness = value / 127f * 100;
+              if (Math.Abs(lastBrightness - brightness) >= 10 || brightness == 100 || brightness == 0)
+              {
+                Console.WriteLine($"Setting brightness to {brightness}%. Last = {lastBrightness}, new = {brightness}, {Math.Abs(lastBrightness - brightness)} >= 10");
+                brightnessController.Set((uint)brightness);
+                lastBrightness = (int)brightness;
+              }
+            }
+          }
+          else
+          {
+            Console.WriteLine("Unrecognised MIDI message: " + message);
           }
         };
         inputDevice.Start();
